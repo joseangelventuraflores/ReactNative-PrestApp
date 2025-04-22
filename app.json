@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "app-tesis",
+    "slug": "app-tesis",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-barcode-scanner"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "11434be6-e14a-4cb9-8dbb-b828dfafe12e"
+      }
+    }
+  }
+}
