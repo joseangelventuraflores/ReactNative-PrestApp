@@ -1,15 +1,15 @@
-// screens/PrestamoScreen.js
-
 import React, { useState, useEffect } from 'react';
-import { Text, View, Button, StyleSheet, Alert } from 'react-native';
+import { Text, View, StyleSheet, Button, Alert } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 
 export default function PrestamoScreen() {
   const [hasPermission, setHasPermission] = useState(null);
-  const [step, setStep] = useState(1); // 1: escanear alumno, 2: escanear equipo
+  const [scanned, setScanned] = useState(false);
   const [alumnoQR, setAlumnoQR] = useState(null);
   const [equipoQR, setEquipoQR] = useState(null);
-  const [scanned, setScanned] = useState(false);
+  const [scanType, setScanType] = useState(null); // Para controlar qué QR se está escaneando
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   useEffect(() => {
     (async () => {
@@ -20,28 +20,79 @@ export default function PrestamoScreen() {
 
   const handleBarCodeScanned = ({ data }) => {
     setScanned(true);
-    if (step === 1) {
-      setAlumnoQR(data);
-      setStep(2);
-      setScanned(false); // Para poder escanear el siguiente
-    } else if (step === 2) {
-      setEquipoQR(data);
-      enviarPrestamo(data);
+
+    if (scanType === 'alumno') {
+      // Validar el código QR del alumno
+      if (data.length < 7) {
+        Alert.alert('Error', 'El código QR del alumno no es válido');
+        setScanned(false);
+        return;
+      }
+
+      const matricula = data.substring(0, 7).trim();
+      const nombre = data.substring(7).trim();
+      
+      setAlumnoQR({ matricula, nombre });
+
+      Alert.alert('Alumno registrado', `Matrícula: ${matricula}\nNombre: ${nombre}`);
+    } else if (scanType === 'equipo') {
+      if (!data.trim()) {
+        Alert.alert('Error', 'El código QR del equipo no es válido');
+        setScanned(false);
+        return;
+      }
+    
+      const codigoEquipo = data.trim();
+      setEquipoQR(codigoEquipo);
+    
+      // Mensaje ajustado para la nueva lógica de estado
+      Alert.alert('Equipo registrado', `Código del equipo: ${codigoEquipo}. Verifica disponibilidad en el servidor.`);
     }
+    
+
+    setScanType(null); // Reinicia el tipo de escaneo
   };
 
-  const enviarPrestamo = async (equipo) => {
-    // Simulando envío a BD, aquí luego conectamos con tu backend
-    Alert.alert(
-      'Préstamo registrado',
-      `Alumno: ${alumnoQR}\nEquipo: ${equipo}`
-    );
+  const finalizarRegistro = async () => {
+  if (isSubmitting) return; // Evita múltiples envíos
+  if (!alumnoQR || !equipoQR) {
+    Alert.alert('Error', 'Faltan datos para finalizar el registro');
+    return;
+  }
 
-    // Reset para escanear otro préstamo
-    setStep(1);
+  setIsSubmitting(true); // Bloquea nuevos envíos
+
+  try {
+    const response = await fetch('http://ip/prestamos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matricula: alumnoQR.matricula,
+        codigo_equipo: equipoQR,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al registrar el préstamo');
+    }
+
+    Alert.alert('✅ Éxito', 'Préstamo registrado correctamente');
+    resetRegistro();
+  } catch (error) {
+    Alert.alert('❌ Error', error.message || 'No se pudo conectar al servidor');
+  } finally {
+    setIsSubmitting(false); // Libera el botón después del intento
+  }
+};
+
+  
+  const resetRegistro = () => {
     setAlumnoQR(null);
     setEquipoQR(null);
     setScanned(false);
+    setScanType(null); // Reinicia el tipo de escaneo
   };
 
   if (hasPermission === null) {
@@ -54,19 +105,61 @@ export default function PrestamoScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>
-        {step === 1 ? 'Escanea el código QR del ALUMNO' : 'Escanea el código QR del EQUIPO'}
-      </Text>
+      <Text style={styles.title}>Registro de Préstamo</Text>
 
-      <View style={styles.scanner}>
+      <View style={styles.infoContainer}>
+        {alumnoQR && (
+          <Text style={styles.infoText}>Alumno: {alumnoQR.nombre} (Matrícula: {alumnoQR.matricula})</Text>
+        )}
+        {equipoQR && (
+          <Text style={styles.infoText}>Equipo: {equipoQR}</Text>
+        )}
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="QR Alumno"
+          onPress={() => {
+            setScanned(false);
+            setScanType('alumno');
+          }}
+          color="blue"
+        />
+        <Button
+          title="QR Equipo"
+          onPress={() => {
+            setScanned(false);
+            setScanType('equipo');
+          }}
+          color="green"
+        />
+      </View>
+
+      {scanType && (
         <BarCodeScanner
           onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
           style={StyleSheet.absoluteFillObject}
         />
-      </View>
+      )}
+ 
+      {!scanType && (
+       <View style={styles.actionButtonsContainer}>
+         <Button
+           title={isSubmitting ? "Registrando..." : "Finalizar Registro"}
+          onPress={finalizarRegistro}
+           disabled={!alumnoQR || !equipoQR || isSubmitting}
+             color="blue"
+        />
 
-      {alumnoQR && <Text style={styles.info}>Alumno: {alumnoQR}</Text>}
-      {equipoQR && <Text style={styles.info}>Equipo: {equipoQR}</Text>}
+
+         <Button
+            title="Cancelar Registro"
+            onPress={resetRegistro}
+            color="red"
+        />
+          </View>
+        )}
+
     </View>
   );
 }
@@ -74,23 +167,39 @@ export default function PrestamoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    padding: 20,
   },
-  scanner: {
-    height: 300,
-    width: '90%',
-    overflow: 'hidden',
-    borderRadius: 20,
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  infoContainer: {
     marginVertical: 20,
+    padding: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    width: '100%',
   },
-  text: {
-    fontSize: 18,
-  },
-  info: {
-    marginTop: 10,
+  infoText: {
     fontSize: 16,
-    color: 'green',
+    marginBottom: 5,
+    color: 'black',
+  },
+  buttonContainer: {
+    marginVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  actionButtonsContainer: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
 });
