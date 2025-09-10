@@ -80,15 +80,17 @@ const connection = mysql.createConnection({
 });
 
 📸 Screenshots
+### Promocion
+![Promocion](screenshots/Example.png)
+
 ### Inicio de sesion
 ![Inicio sesion](screenshots/inicio-sesion.jpeg)
 
 ### Prestamo de equipos
-![Prestamo](screenshots/prestamo/.jpeg)
+![Prestamo](screenshots/prestamo.jpeg)
 
 ### Historial de Préstamos
 ![Historial](screenshots/historial-1.jpeg)
-![Historial2](screenshots/historial-2.jpeg)
 
 ### Devolución
 ![Devolucion](screenshots/devolucion.jpeg)
